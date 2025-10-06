@@ -31,7 +31,16 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define INIT        0
+#define GREEN       1
+#define AMBER       2
+#define RED_GREEN   3
+#define RED_AMBER 4
 
+#define MODE_RED_LONGER   0		//red = green + amber
+#define MODE_GREEN_LONGER 1		//green = red + amber
+
+#define MAX_7SEG_LED 4
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -43,14 +52,25 @@
 TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN PV */
+int traffic_state = MODE_RED_LONGER;
+int status = INIT;
+int counter_NS = 0;
+int counter_EW = 0;
 
+int red_cnt = 5;
+int amber_cnt = 2;
+int green_cnt = 3;
+
+int led_index = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
 static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-
+void fsm_run();
+void display_counter();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -86,15 +106,28 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim2);
 
+  setTimer(0, 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	if (isTimerExpired(0) == 1)
+	{
+		setTimer(0, 1000);
+		led_red_blink();
+	}
+
+	fsm_run();
+	display_counter();
+	//you only need to add the fsm function here
+	//fsm_for_input_processing();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -183,8 +216,195 @@ static void MX_TIM2_Init(void)
 
 }
 
-/* USER CODE BEGIN 4 */
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
 
+  /* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, LED_RED_Pin|SEG0_Pin|SEG1_Pin|SEG2_Pin
+                          |SEG3_Pin|SEG4_Pin|SEG5_Pin|SEG6_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, SEG_EN1_Pin|SEG_EN2_Pin|SEG_EN3_Pin|SEG_EN4_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, RED_EAST_Pin|YELLOW_EAST_Pin|GREEN_EAST_Pin|RED_NORTH_Pin
+                          |YELLOW_NORTH_Pin|GREEN_NORTH_Pin|RED_SOUTH_Pin|YELLOW_SOUTH_Pin
+                          |GREEN_SOUTH_Pin|RED_WEST_Pin|YELLOW_WEST_Pin|GREEN_WEST_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pins : LED_RED_Pin SEG_EN1_Pin SEG_EN2_Pin SEG_EN3_Pin
+                           SEG_EN4_Pin SEG0_Pin SEG1_Pin SEG2_Pin
+                           SEG3_Pin SEG4_Pin SEG5_Pin SEG6_Pin */
+  GPIO_InitStruct.Pin = LED_RED_Pin|SEG_EN1_Pin|SEG_EN2_Pin|SEG_EN3_Pin
+                          |SEG_EN4_Pin|SEG0_Pin|SEG1_Pin|SEG2_Pin
+                          |SEG3_Pin|SEG4_Pin|SEG5_Pin|SEG6_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BTN1_Pin BTN2_Pin BTN3_Pin */
+  GPIO_InitStruct.Pin = BTN1_Pin|BTN2_Pin|BTN3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RED_EAST_Pin YELLOW_EAST_Pin GREEN_EAST_Pin RED_NORTH_Pin
+                           YELLOW_NORTH_Pin GREEN_NORTH_Pin RED_SOUTH_Pin YELLOW_SOUTH_Pin
+                           GREEN_SOUTH_Pin RED_WEST_Pin YELLOW_WEST_Pin GREEN_WEST_Pin */
+  GPIO_InitStruct.Pin = RED_EAST_Pin|YELLOW_EAST_Pin|GREEN_EAST_Pin|RED_NORTH_Pin
+                          |YELLOW_NORTH_Pin|GREEN_NORTH_Pin|RED_SOUTH_Pin|YELLOW_SOUTH_Pin
+                          |GREEN_SOUTH_Pin|RED_WEST_Pin|YELLOW_WEST_Pin|GREEN_WEST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+void traffic_time_init()
+{
+	if (traffic_state == MODE_RED_LONGER)
+	{
+		red_cnt = red_cnt;
+		green_cnt = green_cnt;
+		amber_cnt = red_cnt - green_cnt;
+	}
+	else if (traffic_state == MODE_GREEN_LONGER)
+	{
+		red_cnt = red_cnt;
+		green_cnt = green_cnt;
+		amber_cnt = green_cnt - red_cnt;
+	}
+}
+void fsm_run()
+{
+	if (isTimerExpired(6) == 1)
+	{
+		setTimer(6, 1000);
+		if (counter_NS > 0)
+			counter_NS--;
+		if (counter_EW > 0)
+			counter_EW--;
+	}
+
+	switch (status)
+	{
+	case INIT:
+		status = GREEN;
+		setTimer(2, (green_cnt * 1000));
+		setTimer(1, 100);
+		setTimer(6, 1000);
+
+		counter_NS = green_cnt;
+		counter_EW = red_cnt;
+		display_counter();
+		break;
+
+	case GREEN:
+		HAL_GPIO_WritePin(GPIOB, RED_NORTH_Pin|RED_SOUTH_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, GREEN_NORTH_Pin|GREEN_SOUTH_Pin, GPIO_PIN_RESET);
+
+		HAL_GPIO_WritePin(GPIOB, YELLOW_WEST_Pin|YELLOW_EAST_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, RED_WEST_Pin|RED_EAST_Pin, GPIO_PIN_RESET);
+
+		if (isTimerExpired(2) == 1)
+		{
+			status = AMBER;
+			setTimer(3, (amber_cnt * 1000));
+			counter_NS = amber_cnt;
+			counter_EW = amber_cnt; //đồng bộ với NS
+		}
+		break;
+
+	case AMBER:
+		HAL_GPIO_WritePin(GPIOB, GREEN_NORTH_Pin|GREEN_SOUTH_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, YELLOW_NORTH_Pin|YELLOW_SOUTH_Pin, GPIO_PIN_RESET);
+
+		if (isTimerExpired(3) == 1)
+		{
+			status = RED_GREEN;
+			setTimer(4, (green_cnt * 1000));	//cheat
+			counter_NS = red_cnt;
+			counter_EW = green_cnt;
+		}
+		break;
+
+	case RED_GREEN:
+		HAL_GPIO_WritePin(GPIOB, YELLOW_NORTH_Pin|YELLOW_SOUTH_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, RED_NORTH_Pin|RED_SOUTH_Pin, GPIO_PIN_RESET);
+
+		HAL_GPIO_WritePin(GPIOB, RED_WEST_Pin|RED_EAST_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, GREEN_WEST_Pin|GREEN_EAST_Pin, GPIO_PIN_RESET);
+
+		if (isTimerExpired(4) == 1)
+		{
+			status = RED_AMBER;
+			setTimer(5, (amber_cnt * 1000));
+			counter_NS = amber_cnt;		//cheat
+			counter_EW = amber_cnt;
+		}
+		break;
+
+	case RED_AMBER:
+		HAL_GPIO_WritePin(GPIOB, GREEN_WEST_Pin|GREEN_EAST_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOB, YELLOW_WEST_Pin|YELLOW_EAST_Pin, GPIO_PIN_RESET);
+
+		if (isTimerExpired(5) == 1)
+		{
+			status = GREEN;
+			setTimer(2, (green_cnt * 1000));
+			counter_NS = green_cnt;
+			counter_EW = red_cnt;
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+void display_counter()
+{
+	if (isTimerExpired(1) == 1)
+	{
+		setTimer(1, 100);
+		switch (led_index)
+		{
+		case 0:
+			update7SEG(0, (counter_NS / 10));
+			break;
+		case 1:
+			update7SEG(1, (counter_NS % 10));
+			break;
+		case 2:
+			update7SEG(2, (counter_EW / 10));
+			break;
+		case 3:
+			update7SEG(3, (counter_EW % 10));
+			break;
+		}
+		led_index++;
+		if (led_index > 3)
+			led_index = 0;
+	}
+}
 /* USER CODE END 4 */
 
 /**
