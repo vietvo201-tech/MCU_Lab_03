@@ -1,0 +1,3 @@
+../Core/Src/fsm_run.c:31:6:traffic_time_init	3
+../Core/Src/fsm_run.c:47:6:fsm_run	24
+../Core/Src/fsm_run.c:208:6:display_counter	7

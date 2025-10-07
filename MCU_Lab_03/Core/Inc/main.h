@@ -33,6 +33,9 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "timer.h"
 #include "led_display.h"
+#include "fsm_run.h"
+#include "input_processing.h"
+#include "input_reading.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

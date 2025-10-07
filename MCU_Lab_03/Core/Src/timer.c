@@ -6,7 +6,6 @@
  */
 
 #include "main.h"
-#include "input_reading.h"
 
 #define MAX_COUNTER 10
 #define TIMER_TICK 10
