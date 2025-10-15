@@ -1,3 +1,0 @@
-../Core/Src/fsm_run.c:31:6:traffic_time_init	4	static
-../Core/Src/fsm_run.c:47:6:fsm_run	8	static
-../Core/Src/fsm_run.c:208:6:display_counter	8	static

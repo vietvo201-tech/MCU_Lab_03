@@ -9,5 +9,11 @@
 #define INC_INPUT_PROCESSING_H_
 
 void fsm_for_input_processing(void);
+void run_background();
+void traffic_time_init();
+void fsm_run();
+void count_down();
+void display_counter();
+void display_setting_counter(int);
 
 #endif /* INC_INPUT_PROCESSING_H_ */

@@ -1,4 +1,3 @@
-"./Core/Src/fsm_run.o"
 "./Core/Src/input_processing.o"
 "./Core/Src/input_reading.o"
 "./Core/Src/led_display.o"

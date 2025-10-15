@@ -1,1 +1,7 @@
-../Core/Src/input_processing.c:13:6:fsm_for_input_processing	9
+../Core/Src/input_processing.c:53:6:fsm_for_input_processing	34
+../Core/Src/input_processing.c:177:6:run_background	6
+../Core/Src/input_processing.c:210:6:traffic_time_init	2
+../Core/Src/input_processing.c:225:6:fsm_run	14
+../Core/Src/input_processing.c:329:6:count_down	4
+../Core/Src/input_processing.c:341:6:display_counter	1
+../Core/Src/input_processing.c:349:6:display_setting_counter	1
